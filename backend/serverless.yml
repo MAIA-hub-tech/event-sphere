@@ -1,0 +1,15 @@
+service: event-sphere-api
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: eu-north-1
+
+functions:
+  stripeWebhook:
+    handler: handler.stripeWebhook
+    events:
+      - http:
+          path: api/webhook
+          method: post
+          cors: true

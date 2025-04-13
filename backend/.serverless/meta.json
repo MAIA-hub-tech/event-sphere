@@ -1,0 +1,82 @@
+{
+  "/home/mohamed-amin/Desktop/s_event-sphere/backend/serverless.yml": {
+    "versionFramework": "4.12.0",
+    "servicePath": "/home/mohamed-amin/Desktop/s_event-sphere/backend/serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "event-sphere-api",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs18.x",
+        "region": "eu-north-1",
+        "stage": "dev",
+        "versionFunctions": true
+      },
+      "functions": {
+        "stripeWebhook": {
+          "handler": "handler.stripeWebhook",
+          "events": [
+            {
+              "http": {
+                "path": "api/webhook",
+                "method": "post",
+                "cors": true
+              }
+            }
+          ],
+          "name": "event-sphere-api-dev-stripeWebhook"
+        }
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs18.x",
+      "region": "eu-north-1",
+      "stage": "dev",
+      "versionFunctions": true
+    },
+    "dashboard": {
+      "isEnabledForService": false,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": null,
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": null,
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "serviceRawFile": "service: event-sphere-api\n\nprovider:\n  name: aws\n  runtime: nodejs18.x\n  region: eu-north-1\n\nfunctions:\n  stripeWebhook:\n    handler: handler.stripeWebhook\n    events:\n      - http:\n          path: api/webhook\n          method: post\n          cors: true\n",
+    "command": [
+      "info"
+    ],
+    "options": {},
+    "orgId": "5969d1c2-3830-4c03-9fe5-fef78847e909",
+    "orgName": "maia1",
+    "userId": "y8TSqPB2R9LyCbHVH1",
+    "userName": "maia1",
+    "serviceProviderAwsAccountId": "856380560755",
+    "serviceProviderAwsCfStackName": "event-sphere-api-dev",
+    "serviceProviderAwsCfStackId": "arn:aws:cloudformation:eu-north-1:856380560755:stack/event-sphere-api-dev/4d490690-16f7-11f0-b610-0ef136872385",
+    "serviceProviderAwsCfStackCreated": "2025-04-11T17:06:26.223Z",
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": "CREATE_COMPLETE",
+    "serviceProviderAwsCfStackOutputs": [
+      {
+        "OutputKey": "StripeWebhookLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:eu-north-1:856380560755:function:event-sphere-api-dev-stripeWebhook:1",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-event-sphere-api-dev-StripeWebhookLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "ServiceEndpoint",
+        "OutputValue": "https://hlih84c3eb.execute-api.eu-north-1.amazonaws.com/dev",
+        "Description": "URL of the service endpoint",
+        "ExportName": "sls-event-sphere-api-dev-ServiceEndpoint"
+      },
+      {
+        "OutputKey": "ServerlessDeploymentBucketName",
+        "OutputValue": "serverless-framework-deployments-eu-north-1-df1234da-7057",
+        "ExportName": "sls-event-sphere-api-dev-ServerlessDeploymentBucketName"
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+component: "@sls-next/serverless-component@3.7.0" # or latest
+
+name: event-sphere-app
+
+inputs:
+  bucketName: event-sphere-static
+  cloudfront:
+    comment: "Event Sphere CloudFront CDN"
+  runtime:
+    defaultLambda: "nodejs18.x"
+    apiLambda: "nodejs18.x"
+    imageLambda: "nodejs18.x"
