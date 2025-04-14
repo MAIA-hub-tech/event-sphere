@@ -1,5 +1,3 @@
-// next.config.ts
-
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -30,4 +28,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig; // Ensure we use `export default` here
+export default nextConfig;
