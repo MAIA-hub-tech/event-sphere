@@ -45,13 +45,13 @@ const ProfilePage = () => {
     }));
 
   if (loading) {
-    return <div className="wrapper py-10 text-center">Loading...</div>;
+    return <div className="max-w-7xl lg:mx-auto p-5 md:px-10 xl:px-0 w-full py-10 text-center">Loading...</div>;
   }
 
   if (!userId) {
     return (
-      <div className="wrapper min-h-[200px] py-28 text-center">
-        <h3 className="h3-bold">Please sign in to view your profile</h3>
+      <div className="max-w-7xl lg:mx-auto p-5 md:px-10 xl:px-0 w-full min-h-[200px] py-28 text-center">
+        <h3 className=" font-bold text-[28px] leading-[36px] md:text-[36px] md:leading-[44px]">Please sign in to view your profile</h3>
         <Button asChild size="lg" className="mt-4">
           <Link href="/sign-in">Sign In</Link>
         </Button>
@@ -62,16 +62,16 @@ const ProfilePage = () => {
   return (
     <>
       {/* My Tickets Section */}
-      <section className="bg-primary-50 bg-dotted-pattern bg-cover bg-center py-5 md:py-10">
-        <div className="wrapper flex items-center justify-center sm:justify-between">
-          <h3 className='h3-bold text-center sm:text-left'>My Tickets</h3>
-          <Button asChild size="lg" className="button hidden sm:flex">
+      <section className="bg-blue-50  bg-[radial-gradient(circle,theme(colors.gray.300)_1px,transparent_1px)] bg-cover bg-center py-5 md:py-10">
+        <div className="max-w-7xl lg:mx-auto p-5 md:px-10 xl:px-0 w-full flex items-center justify-center sm:justify-between">
+          <h3 className=' font-bold text-[28px] leading-[36px] md:text-[36px] md:leading-[44px] text-center sm:text-left'>My Tickets</h3>
+          <Button asChild size="lg" className="bg-cyan-500 rounded-full h-[54px]  text-[16px] font-medium leading-[24px] hidden sm:flex">
             <Link href="/#events">Explore More Events</Link>
           </Button>
         </div>
       </section>
 
-      <section className="wrapper my-8">
+      <section className="max-w-7xl lg:mx-auto p-5 md:px-10 xl:px-0 w-full my-8">
         <Collection 
           data={ticketEvents}
           emptyTitle="No event tickets purchased yet"
@@ -85,16 +85,16 @@ const ProfilePage = () => {
       </section>
 
       {/* Events Organized Section */}
-      <section className="bg-primary-50 bg-dotted-pattern bg-cover bg-center py-5 md:py-10">
-        <div className="wrapper flex items-center justify-center sm:justify-between">
-          <h3 className='h3-bold text-center sm:text-left'>Events Organized</h3>
-          <Button asChild size="lg" className="button hidden sm:flex">
+      <section className="bg-blue-50 bg-[radial-gradient(circle,theme(colors.gray.300)_1px,transparent_1px)] bg-cover bg-center py-5 md:py-10">
+        <div className=" max-w-7xl lg:mx-auto p-5 md:px-10 xl:px-0 w-full flex items-center justify-center sm:justify-between">
+          <h3 className='font-bold text-[28px] leading-[36px] md:text-[36px] md:leading-[44px] text-center sm:text-left'>Events Organized</h3>
+          <Button asChild size="lg" className=" bg-cyan-500 rounded-full h-[54px]  text-[16px] font-normal leading-[24px] hidden sm:flex">
             <Link href="/events/create">Create New Event</Link>
           </Button>
         </div>
       </section>
 
-      <section className="wrapper my-8">
+      <section className="max-w-7xl lg:mx-auto p-5 md:px-10 xl:px-0 w-full my-8">
         <Collection 
           data={organizedEvents}
           emptyTitle="No events organized yet"

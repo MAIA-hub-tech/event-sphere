@@ -67,7 +67,7 @@ const UserButton = () => {
               height={40}
               className="object-cover h-full w-full"
               onError={handleImageError}
-              unoptimized={true} // Bypass Next.js optimization for external images
+              unoptimized={true} 
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center text-white font-medium text-lg">

@@ -52,10 +52,8 @@ export function FileUploader({
       const user = auth.currentUser;
       if (!user) throw new Error('Please sign in to upload files');
 
-      // 1. Get fresh Firebase token
       const token = await getIdToken(user, true);
-      
-      // 2. Get upload URL from our API
+
       const response = await fetch('/api/generate-upload-url', {
         method: 'POST',
         headers: {
@@ -79,7 +77,6 @@ export function FileUploader({
         throw new Error('Invalid response from server');
       }
 
-      // 3. Upload to S3 with progress tracking
       const xhr = new XMLHttpRequest();
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -99,7 +96,7 @@ export function FileUploader({
         };
         xhr.onerror = () => reject(new Error('Network error during upload'));
         xhr.open('PUT', uploadUrl, true);
-        xhr.setRequestHeader('Content-Type', file.type); // Only this header
+        xhr.setRequestHeader('Content-Type', file.type);
         xhr.send(file);
       });
 
@@ -169,7 +166,7 @@ export function FileUploader({
               className="object-cover object-center"
               priority
               sizes="(max-width: 768px) 100vw, 50vw"
-              onError={(e) => {
+              onError={() => {
                 console.error('Final fallback triggered for:', imageUrl);
                 toast.error('Could not load image');
               }}

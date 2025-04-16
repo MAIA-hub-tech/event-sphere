@@ -15,50 +15,49 @@ const s3Client = new S3Client({
 
 export async function POST(request: Request) {
   try {
-    // First check if we're receiving form data (direct upload)
     const contentType = request.headers.get('content-type');
-    
+
+    // Handle direct multipart/form-data file upload
     if (contentType?.includes('multipart/form-data')) {
       const formData = await request.formData();
-      const file = formData.get('file');
-      
-      if (!(file instanceof File)) {
+      const file = formData.get('file') as Blob | null;
+
+      if (!file || typeof file !== 'object' || typeof (file as any).arrayBuffer !== 'function') {
         return NextResponse.json(
-          { success: false, error: 'Invalid file format' },
+          { success: false, error: 'Invalid file format received' },
           { status: 400 }
         );
       }
 
-      // Generate safe filename and path
-      const fileName = file.name;
-      const fileExt = fileName.split('.').pop()?.toLowerCase() || 'bin';
-      const sanitizedFileName = fileName
+      // Safe filename handling
+      const originalName = (formData.get('filename') || 'upload.bin').toString();
+      const fileExt = originalName.split('.').pop()?.toLowerCase() || 'bin';
+      const sanitizedFileName = originalName
         .replace(/[^a-zA-Z0-9-_.]/g, '')
         .replace(/\s+/g, '_');
-      
+
       const eventId = formData.get('eventId')?.toString() || 'temp';
       const s3Key = `uploads/${eventId}/${Date.now()}_${sanitizedFileName}`;
 
-      // Create command for direct upload
+      // Upload to S3
       const putCommand = new PutObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET!,
         Key: s3Key,
         Body: Buffer.from(await file.arrayBuffer()),
-        ContentType: file.type,
+        ContentType: (file as any).type || 'application/octet-stream',
         ACL: 'private',
         Metadata: {
-          originalFileName: fileName,
+          originalFileName: originalName,
           uploadedBy: 'event-sphere-app',
           ...(eventId && { eventId })
         },
-        CacheControl: 'max-age=31536000' // 1 year cache
+        CacheControl: 'max-age=31536000'
       });
 
-      // Upload file directly
       await s3Client.send(putCommand);
 
       const publicUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`;
-      
+
       return NextResponse.json({
         success: true,
         url: publicUrl,
@@ -67,12 +66,10 @@ export async function POST(request: Request) {
       });
     }
 
-    // Original signed URL generation logic
+    // Handle signed URL generation (JSON body expected)
     validateS3Config();
-
-    // Parse and validate request body
     const { fileName, fileType, eventId } = await request.json();
-    
+
     if (!fileName || !fileType) {
       return NextResponse.json(
         { error: 'fileName and fileType are required' },
@@ -80,15 +77,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate safe filename and path
     const fileExt = fileName.split('.').pop()?.toLowerCase() || 'bin';
     const sanitizedFileName = fileName
       .replace(/[^a-zA-Z0-9-_.]/g, '')
       .replace(/\s+/g, '_');
-    
+
     const s3Key = `uploads/${eventId || 'temp'}/${Date.now()}_${sanitizedFileName}`;
 
-    // Create signed URL command with enhanced metadata
     const putCommand = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET!,
       Key: s3Key,
@@ -99,12 +94,11 @@ export async function POST(request: Request) {
         uploadedBy: 'event-sphere-app',
         ...(eventId && { eventId })
       },
-      CacheControl: 'max-age=31536000' // 1 year cache
+      CacheControl: 'max-age=31536000'
     });
 
-    // Generate signed URL (valid for 5 minutes)
     const uploadUrl = await getSignedUrl(s3Client, putCommand, {
-      expiresIn: 300
+      expiresIn: 300 // 5 minutes
     });
 
     return NextResponse.json({
@@ -118,7 +112,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('S3 operation error:', error);
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: error instanceof Error ? error.message : 'Operation failed',
         ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
@@ -128,7 +122,7 @@ export async function POST(request: Request) {
   }
 }
 
-// Add OPTIONS handler for CORS preflight
+// Handle CORS preflight
 export async function OPTIONS() {
   return new NextResponse(null, {
     headers: {

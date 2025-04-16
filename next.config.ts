@@ -1,4 +1,9 @@
+/** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true, // ✅ Recommended
+  experimental: {
+    serverActions: true, // ✅ If using server actions
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -13,39 +13,40 @@ type EventPageProps = {
   searchParams: { [key: string]: string | string[] | undefined };
 };
 
-export default async function EventPage({ params, searchParams }: EventPageProps) {
-  // Validate event ID
-  const eventId = params?.id;
+export default async function EventPage({ 
+  params, 
+  searchParams 
+}: EventPageProps) {
+  // Get event ID from params
+  const eventId = params.id;
   if (!eventId || typeof eventId !== 'string') {
-    console.error('Invalid event ID parameter:', eventId);
     return notFound();
   }
 
   try {
-    // Fetch event data with error handling
+    // Fetch event data
     const event = await getEventById(eventId);
     if (!event) {
-      console.error('Event not found in database:', eventId);
       return notFound();
     }
 
-    // Log successful fetch (remove in production)
-    console.log('Successfully fetched event:', {
-      id: event.id,
-      title: event.title,
-      organizerId: event.organizerId,
-      categoryId: event.categoryId
+    // Debug organizer data
+    console.log('Organizer details:', {
+      id: event.organizerId,
+      name: event.organizer 
+        ? `${event.organizer.firstName || ''} ${event.organizer.lastName || ''}`.trim() 
+        : 'No organizer data',
+      hasData: !!event.organizer
     });
 
-    // Date formatting helpers
+    // Date formatting
     const formatDate = (date: Date | null) => date ? formatDateTime.date(date) : 'TBD';
     const formatTime = (date: Date | null) => date ? formatDateTime.time(date) : 'TBD';
 
-    // Safely handle searchParams.page
-    const pageParam = searchParams?.page;
-    const page = Array.isArray(pageParam) ? pageParam[0] : pageParam || '1';
+    // Get page number
+    const page = typeof searchParams.page === 'string' ? searchParams.page : '1';
 
-    // Fetch related events with error handling
+    // Fetch related events
     const relatedEvents = await getRelatedEventsByCategory({
       categoryId: event.categoryId,
       eventId: event.id,
@@ -55,15 +56,20 @@ export default async function EventPage({ params, searchParams }: EventPageProps
       return { data: [], totalPages: 0 };
     });
 
-    // Organizer display name logic
+    // Display organizer name with fallbacks
     const getOrganizerName = () => {
-      if (event.organizer?.firstName && event.organizer?.lastName) {
-        return `${event.organizer.firstName} ${event.organizer.lastName}`;
-      }
-      return event.organizer?.name || event.organizerId || 'Unknown Organizer';
+      if (!event.organizer) return event.organizerId || 'Unknown Organizer';
+      
+      const nameParts = [];
+      if (event.organizer.firstName) nameParts.push(event.organizer.firstName);
+      if (event.organizer.lastName) nameParts.push(event.organizer.lastName);
+      
+      return nameParts.length > 0 
+        ? nameParts.join(' ') 
+        : event.organizerId || 'Unknown Organizer';
     };
 
-    // URL display formatting
+    // Format URLs for display
     const formatUrl = (url: string) => {
       return url.replace(/(^\w+:|^)\/\//, '');
     };
@@ -177,7 +183,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
                 </p>
                 {event.url && (
                   <p className="text-[16px] font-medium leading-[24px] lg:text-[18px] lg:font-normal lg:leading-[28px] lg:tracking-[2%] truncate text-blue-500 underline">
-                    <a 
+                    <a
                       href={event.url.includes('://') ? event.url : `https://${event.url}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -210,7 +216,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
       </>
     );
   } catch (error) {
-    console.error('Error in EventPage:', {
+    console.error('Error loading event:', {
       error: error instanceof Error ? error.message : 'Unknown error',
       eventId,
       timestamp: new Date().toISOString()

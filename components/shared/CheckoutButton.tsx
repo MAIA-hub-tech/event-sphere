@@ -1,69 +1,77 @@
 // components/shared/CheckoutButton.tsx
-"use client"
+"use client";
 
-import { useAuthState } from 'react-firebase-hooks/auth'
-import { auth, db } from '@/lib/firebase'
-import { Loader2 } from 'lucide-react'
-import Checkout from './Checkout'
-import Link from 'next/link'
-import { Button } from '../ui/button'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { toast } from 'sonner'
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth, db } from "@/lib/firebase";
+import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Button } from "../ui/button";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { toast } from "sonner";
+import { createStripeSession } from "@/lib/actions/stripe.actions"; // make sure this exists
 
 interface CheckoutButtonProps {
   event: {
-    id: string
-    _id?: string
-    title: string
-    price: number
-    isFree: boolean
-    endDateTime: Date
-  }
+    id: string;
+    _id?: string;
+    title: string;
+    price: number;
+    isFree: boolean;
+    endDateTime: Date;
+  };
 }
 
 const CheckoutButton = ({ event }: CheckoutButtonProps) => {
-  const [user, loading, error] = useAuthState(auth)
-  const hasEventFinished = new Date(event.endDateTime) < new Date()
-
-  // Normalize the ID field
-  const eventId = event._id || event.id
+  const [user, loading, error] = useAuthState(auth);
+  const hasEventFinished = new Date(event.endDateTime) < new Date();
+  const eventId = event._id || event.id;
 
   const handleFreeCheckout = async () => {
+    if (!user) return toast.error("You must be logged in to get a ticket");
+
     try {
-      // Create order directly in Firestore
-      const orderRef = doc(db, 'orders', `${eventId}_${user?.uid}_${Date.now()}`)
+      const orderRef = doc(db, "orders", `${eventId}_${user.uid}_${Date.now()}`);
       await setDoc(orderRef, {
-        eventId: eventId,
-        buyerId: user?.uid,
+        eventId,
+        buyerId: user.uid,
         amount: 0,
-        currency: 'GBP',
-        status: 'completed',
-        createdAt: serverTimestamp()
-      })
-      
-      // Redirect to success page
-      window.location.href = `/order-success?eventId=${eventId}`
+        currency: "GBP",
+        status: "completed",
+        createdAt: serverTimestamp(),
+      });
+
+      window.location.href = `/order-success?eventId=${eventId}`;
     } catch (error) {
-      console.error('Free checkout error:', error)
-      toast.error('Failed to process free ticket')
+      console.error("Free checkout error:", error);
+      toast.error("Failed to process free ticket");
     }
-  }
+  };
+
+  const handlePaidCheckout = async () => {
+    if (!user) return toast.error("You must be logged in to buy a ticket");
+
+    try {
+      const sessionUrl = await createStripeSession({
+        eventId,
+        eventTitle: event.title,
+        price: event.price,
+        isFree: event.isFree,
+        buyerId: user.uid,
+      });
+
+      window.location.href = sessionUrl;
+    } catch (err) {
+      console.error("Stripe checkout error:", err);
+      toast.error("Payment failed. Please try again.");
+    }
+  };
 
   if (loading) {
-    return <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
+    return <Loader2 className="h-5 w-5 animate-spin text-primary-500" />;
   }
 
   if (error) {
-    return <p className="p-2 text-red-400">Error loading user</p>
-  }
-
-  const checkoutEvent = {
-    id: eventId,
-    _id: eventId,
-    title: event.title,
-    price: event.price,
-    isFree: event.isFree,
-    endDateTime: event.endDateTime
+    return <p className="p-2 text-red-400">Error loading user</p>;
   }
 
   return (
@@ -75,18 +83,16 @@ const CheckoutButton = ({ event }: CheckoutButtonProps) => {
           <Link href="/sign-in">Get Tickets</Link>
         </Button>
       ) : event.isFree ? (
-        <Button 
-          onClick={handleFreeCheckout}
-          className="button rounded-full" 
-          size="lg"
-        >
+        <Button onClick={handleFreeCheckout} className="button rounded-full" size="lg">
           Get Free Ticket
         </Button>
       ) : (
-        <Checkout event={checkoutEvent} userId={user.uid} />
+        <Button onClick={handlePaidCheckout} className="button rounded-full" size="lg">
+          Buy Ticket
+        </Button>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default CheckoutButton
+export default CheckoutButton;

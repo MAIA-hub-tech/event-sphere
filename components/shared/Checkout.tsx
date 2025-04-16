@@ -1,48 +1,49 @@
 // components/shared/Checkout.tsx
-"use client"
+"use client";
 
-import { Button } from '../ui/button'
-import { useEffect } from 'react'
-import { toast } from 'sonner'
-import { createStripeSession } from '@/lib/actions/stripe.actions'
-import { getStripe } from '@/lib/stripe'
-import { CheckoutEventInput } from '@/types'
+import { Button } from "../ui/button";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { createStripeSession } from "@/lib/actions/stripe.actions";
+import { CheckoutEventInput } from "@/types";
 
 interface CheckoutProps {
-  event: CheckoutEventInput
-  userId: string
+  event: CheckoutEventInput;
+  userId: string;
 }
 
 const Checkout = ({ event, userId }: CheckoutProps) => {
   useEffect(() => {
-    const query = new URLSearchParams(window.location.search)
-    if (query.get('success')) toast.success("Order confirmed!")
-    if (query.get('canceled')) toast.warning("Order canceled")
-  }, [])
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("success")) toast.success("Order confirmed!");
+    if (query.get("canceled")) toast.warning("Order canceled");
+  }, []);
 
   const handleCheckout = async () => {
     try {
-      const session = await createStripeSession({
+      const sessionUrl = await createStripeSession({
         eventId: event.id,
         eventTitle: event.title,
         price: event.price,
-        isFree: false, // Explicitly false since this component only handles paid events
-        buyerId: userId
-      })
+        isFree: false, // paid event
+        buyerId: userId,
+      });
 
-      const stripe = await getStripe()
-      await stripe?.redirectToCheckout({ sessionId: session.id })
+      if (!sessionUrl) throw new Error("No session URL returned");
+
+      // redirect user to Stripe Checkout
+      window.location.href = sessionUrl;
     } catch (error) {
-      toast.error("Payment failed")
-      console.error(error)
+      toast.error("Payment failed");
+      console.error("❌ Checkout error:", error);
     }
-  }
+  };
 
   return (
     <Button onClick={handleCheckout} size="lg" className="button sm:w-fit">
       Buy Ticket
     </Button>
-  )
-}
+  );
+};
 
-export default Checkout
+export default Checkout;

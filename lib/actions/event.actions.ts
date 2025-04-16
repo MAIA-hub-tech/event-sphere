@@ -18,7 +18,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 import { deleteFileFromS3, uploadFileToS3 } from '@/lib/aws/s3';
-import { FirebaseError } from 'firebase/app';
 
 // Constants
 const EVENTS_PER_PAGE = 6;
@@ -31,9 +30,9 @@ interface Category {
 
 interface Organizer {
   id: string;
-  name?: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
   photoURL?: string;
 }
 
@@ -74,14 +73,6 @@ interface GetAllEventsOptions {
   lastVisible?: DocumentSnapshot | null;
 }
 
-interface User {
-  uid: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  photoURL?: string;
-}
-
 // Helper Functions
 const transformFirestoreEvent = (docData: DocumentData, docId: string): Omit<Event, 'category' | 'organizer'> => {
   const convertTimestamp = (timestamp: any): Date => {
@@ -105,15 +96,105 @@ const transformFirestoreEvent = (docData: DocumentData, docId: string): Omit<Eve
     isOnline: Boolean(docData.isOnline),
     url: docData.url,
     organizerId: docData.organizerId || docData.userId || '',
-    userId: docData.userId || docData.organizerId || '',
+    userId: docData.userId || '',
     createdAt: convertTimestamp(docData.createdAt),
     updatedAt: convertTimestamp(docData.updatedAt)
   };
 };
 
-// Core CRUD Operations
+// Organizer Helpers
+const fetchOrganizerDetails = async (organizerId: string): Promise<Organizer> => {
+  if (!organizerId) {
+    return { id: '', firstName: 'Unknown', lastName: 'Organizer' };
+  }
 
-// CREATE
+  try {
+    const organizerDoc = await getDoc(doc(db, "users", organizerId));
+    if (!organizerDoc.exists()) {
+      console.warn(`Organizer document ${organizerId} not found`);
+      return { id: organizerId, firstName: 'Unknown', lastName: 'Organizer' };
+    }
+
+    const data = organizerDoc.data();
+    return {
+      id: organizerDoc.id,
+      firstName: data.firstName || 'Unknown',
+      lastName: data.lastName || 'Organizer',
+      email: data.email,
+      photoURL: data.photoURL
+    };
+  } catch (error) {
+    console.error(`Error fetching organizer ${organizerId}:`, error);
+    return { id: organizerId, firstName: 'Unknown', lastName: 'Organizer' };
+  }
+};
+
+const fetchOrganizersBatch = async (organizerIds: string[]): Promise<Map<string, Organizer>> => {
+  const uniqueIds = [...new Set(organizerIds.filter(id => id))];
+  if (uniqueIds.length === 0) return new Map();
+
+  try {
+    const snapshot = await getDocs(
+      query(collection(db, "users"), where('__name__', 'in', uniqueIds))
+    );
+
+    const organizersMap = new Map<string, Organizer>();
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      organizersMap.set(doc.id, {
+        id: doc.id,
+        firstName: data.firstName || 'Unknown',
+        lastName: data.lastName || 'Organizer',
+        email: data.email,
+        photoURL: data.photoURL
+      });
+    });
+
+    // Add placeholders for any missing organizers
+    uniqueIds.forEach(id => {
+      if (!organizersMap.has(id)) {
+        organizersMap.set(id, {
+          id: id,
+          firstName: 'Unknown',
+          lastName: 'Organizer'
+        });
+      }
+    });
+
+    return organizersMap;
+  } catch (error) {
+    console.error('Error batch fetching organizers:', error);
+    const fallbackMap = new Map<string, Organizer>();
+    uniqueIds.forEach(id => {
+      fallbackMap.set(id, {
+        id: id,
+        firstName: 'Unknown',
+        lastName: 'Organizer'
+      });
+    });
+    return fallbackMap;
+  }
+};
+
+// Category Helpers
+const fetchCategoryDetails = async (categoryId: string): Promise<Category | null> => {
+  if (!categoryId) return null;
+
+  try {
+    const categoryDoc = await getDoc(doc(db, "categories", categoryId));
+    if (!categoryDoc.exists()) return null;
+
+    return {
+      id: categoryDoc.id,
+      name: categoryDoc.data().name || 'Uncategorized'
+    };
+  } catch (error) {
+    console.error(`Error fetching category ${categoryId}:`, error);
+    return null;
+  }
+};
+
+// Core CRUD Operations
 export const createEvent = async (
   payload: {
     title: string;
@@ -129,14 +210,10 @@ export const createEvent = async (
     userId: string;
     isOnline?: boolean;
   },
-  currentUser: User
+  currentUser: { uid: string; firstName?: string; lastName?: string; photoURL?: string }
 ): Promise<Event> => {
   try {
     const { imageFile, userId, ...eventData } = payload;
-
-    if (!currentUser?.uid) {
-      throw new Error('User not authenticated');
-    }
 
     // Upload image if provided
     let imageUrl = '';
@@ -152,6 +229,7 @@ export const createEvent = async (
       ...eventData,
       imageUrl,
       organizerId: userId,
+      organizerRef: doc(db, 'users', userId),
       userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -161,7 +239,14 @@ export const createEvent = async (
     
     return {
       ...transformFirestoreEvent(eventToCreate, docRef.id),
-      id: docRef.id
+      id: docRef.id,
+      organizer: {
+        id: userId,
+        firstName: currentUser.firstName || 'Unknown',
+        lastName: currentUser.lastName || 'Organizer',
+        photoURL: currentUser.photoURL
+      },
+      category: await fetchCategoryDetails(payload.categoryId)
     };
   } catch (error) {
     console.error('Error creating event:', error);
@@ -169,32 +254,22 @@ export const createEvent = async (
   }
 };
 
-// READ
 export const getEventById = async (eventId: string): Promise<Event | null> => {
   try {
     const eventDoc = await getDoc(doc(db, "events", eventId));
     if (!eventDoc.exists()) return null;
 
     const eventData = eventDoc.data();
-    const baseEvent = transformFirestoreEvent(eventData, eventDoc.id);
+    const [organizer, category] = await Promise.all([
+      fetchOrganizerDetails(eventData.organizerId || eventData.userId),
+      fetchCategoryDetails(eventData.categoryId)
+    ]);
 
-    // Ensure price is number type
-    const processedEvent = {
-      ...baseEvent,
-      price: typeof eventData.price === 'string' ? parseFloat(eventData.price) : eventData.price,
-      organizer: eventData.organizerId ? {
-        id: eventData.organizerId,
-        firstName: eventData.organizer?.firstName,
-        lastName: eventData.organizer?.lastName,
-        photoURL: eventData.organizer?.photoURL
-      } : null,
-      category: eventData.categoryId ? {
-        id: eventData.categoryId,
-        name: eventData.category?.name || 'Uncategorized'
-      } : null
+    return {
+      ...transformFirestoreEvent(eventData, eventDoc.id),
+      organizer,
+      category
     };
-
-    return processedEvent;
   } catch (error) {
     console.error('Error in getEventById:', error);
     return null;
@@ -240,7 +315,45 @@ export const getAllEvents = async ({
     }
 
     const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(doc => transformFirestoreEvent(doc.data(), doc.id));
+    
+    // Batch fetch all organizers and categories
+    const organizerIds = snapshot.docs.map(doc => doc.data().organizerId || doc.data().userId).filter(Boolean);
+    const categoryIds = snapshot.docs.map(doc => doc.data().categoryId).filter(Boolean);
+
+    const [organizersMap, categoriesMap] = await Promise.all([
+      fetchOrganizersBatch(organizerIds),
+      (async () => {
+        const uniqueCategoryIds = [...new Set(categoryIds)];
+        if (uniqueCategoryIds.length === 0) return new Map();
+        const snapshot = await getDocs(
+          query(collection(db, "categories"), where('__name__', 'in', uniqueCategoryIds))
+        );
+        const map = new Map<string, Category>();
+        snapshot.forEach(doc => {
+          map.set(doc.id, {
+            id: doc.id,
+            name: doc.data().name || 'Uncategorized'
+          });
+        });
+        return map;
+      })()
+    ]);
+
+    const data = snapshot.docs.map(doc => {
+      const eventData = doc.data();
+      const organizerId = eventData.organizerId || eventData.userId;
+      const organizer = organizersMap.get(organizerId) || {
+        id: organizerId,
+        firstName: 'Unknown',
+        lastName: 'Organizer'
+      };
+      
+      return {
+        ...transformFirestoreEvent(eventData, doc.id),
+        organizer,
+        category: categoriesMap.get(eventData.categoryId) || null
+      };
+    });
 
     return {
       data,
@@ -260,14 +373,14 @@ export const getAllEvents = async ({
   }
 };
 
-export const getEventsByUser = async ({ 
-  userId, 
-  page = 1, 
-  limit = 3 
-}: { 
-  userId: string; 
-  page?: number; 
-  limit?: number 
+export const getEventsByUser = async ({
+  userId,
+  page = 1,
+  limit = 3
+}: {
+  userId: string;
+  page?: number;
+  limit?: number;
 }): Promise<PaginatedEvents> => {
   try {
     const eventsRef = collection(db, 'events');
@@ -283,14 +396,38 @@ export const getEventsByUser = async ({
       getCountFromServer(query(eventsRef, where('userId', '==', userId)))
     ]);
 
+    // Batch fetch organizers
+    const organizerIds = snapshot.docs.map(doc => doc.data().organizerId || doc.data().userId).filter(Boolean);
+    const organizersMap = await fetchOrganizersBatch(organizerIds);
+
+    const data = snapshot.docs.map(doc => {
+      const eventData = doc.data();
+      const organizerId = eventData.organizerId || eventData.userId;
+      const organizer = organizersMap.get(organizerId) || {
+        id: organizerId,
+        firstName: 'Unknown',
+        lastName: 'Organizer'
+      };
+      
+      return {
+        ...transformFirestoreEvent(eventData, doc.id),
+        organizer,
+        category: null // Add category fetching if needed
+      };
+    });
+
     return {
-      data: snapshot.docs.map(doc => transformFirestoreEvent(doc.data(), doc.id)),
+      data,
       totalPages: Math.ceil(totalSnapshot.data().count / limit),
       currentPage: page
     };
   } catch (error) {
-    console.error("Error fetching events:", error);
-    throw error;
+    console.error("Error fetching user events:", error);
+    return {
+      data: [],
+      totalPages: 0,
+      currentPage: 1
+    };
   }
 };
 
@@ -304,11 +441,6 @@ export const getRelatedEventsByCategory = async (payload: {
     const { categoryId, eventId, limit = 3 } = payload;
     const page = typeof payload.page === 'string' ? parseInt(payload.page) : payload.page || 1;
     
-    if (!categoryId) {
-      console.error('Missing categoryId in getRelatedEventsByCategory');
-      return { data: [], totalPages: 0, currentPage: 1 };
-    }
-
     const eventsRef = collection(db, 'events');
     const q = query(
       eventsRef,
@@ -323,8 +455,31 @@ export const getRelatedEventsByCategory = async (payload: {
       getCountFromServer(query(eventsRef, where('categoryId', '==', categoryId)))
     ]);
 
+    // Batch fetch organizers
+    const organizerIds = snapshot.docs.map(doc => doc.data().organizerId || doc.data().userId).filter(Boolean);
+    const organizersMap = await fetchOrganizersBatch(organizerIds);
+
+    // Get category details once since all events share same category
+    const category = await fetchCategoryDetails(categoryId);
+
+    const data = snapshot.docs.map(doc => {
+      const eventData = doc.data();
+      const organizerId = eventData.organizerId || eventData.userId;
+      const organizer = organizersMap.get(organizerId) || {
+        id: organizerId,
+        firstName: 'Unknown',
+        lastName: 'Organizer'
+      };
+      
+      return {
+        ...transformFirestoreEvent(eventData, doc.id),
+        organizer,
+        category: category || { id: categoryId, name: 'Uncategorized' }
+      };
+    });
+
     return {
-      data: snapshot.docs.map(doc => transformFirestoreEvent(doc.data(), doc.id)),
+      data,
       totalPages: Math.ceil(countSnapshot.data().count / limit),
       currentPage: page
     };
@@ -334,7 +489,6 @@ export const getRelatedEventsByCategory = async (payload: {
   }
 };
 
-// UPDATE
 export const updateEvent = async (payload: {
   eventId: string;
   eventData: Partial<Omit<Event, 'id' | 'createdAt'>>;
@@ -362,7 +516,7 @@ export const updateEvent = async (payload: {
         `events/${userId}/${eventId}/${Date.now()}_${imageFile.name}`,
         { isPublic: true }
       );
-      
+    
       if (eventSnap.data().imageUrl && eventSnap.data().imageUrl !== imageUrl) {
         try {
           await deleteFileFromS3(eventSnap.data().imageUrl);
@@ -372,12 +526,10 @@ export const updateEvent = async (payload: {
       }
     }
 
-    // Create a new object with only defined values
     const updateData: Record<string, any> = {
       updatedAt: serverTimestamp()
     };
 
-    // Explicitly check and add each possible field
     if (eventData.title !== undefined) updateData.title = eventData.title;
     if (eventData.description !== undefined) updateData.description = eventData.description;
     if (eventData.isFree !== undefined) updateData.isFree = eventData.isFree;
@@ -404,7 +556,6 @@ export const updateEvent = async (payload: {
   }
 };
 
-// DELETE
 export const deleteEvent = async (payload: {
   eventId: string;
   userId: string;
@@ -450,7 +601,23 @@ export const getEventsByOrganizer = async (organizerId: string, limit = 6): Prom
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => transformFirestoreEvent(doc.data(), doc.id));
+    const organizerIds = snapshot.docs.map(doc => doc.data().organizerId).filter(Boolean);
+    const organizersMap = await fetchOrganizersBatch(organizerIds);
+
+    return snapshot.docs.map(doc => {
+      const eventData = doc.data();
+      const organizer = organizersMap.get(eventData.organizerId) || {
+        id: eventData.organizerId,
+        firstName: 'Unknown',
+        lastName: 'Organizer'
+      };
+      
+      return {
+        ...transformFirestoreEvent(eventData, doc.id),
+        organizer,
+        category: null
+      };
+    });
   } catch (error) {
     console.error('Error fetching events by organizer:', error);
     return [];
@@ -468,7 +635,23 @@ export const searchEvents = async (searchQuery: string, limit = 5): Promise<Even
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => transformFirestoreEvent(doc.data(), doc.id));
+    const organizerIds = snapshot.docs.map(doc => doc.data().organizerId).filter(Boolean);
+    const organizersMap = await fetchOrganizersBatch(organizerIds);
+
+    return snapshot.docs.map(doc => {
+      const eventData = doc.data();
+      const organizer = organizersMap.get(eventData.organizerId) || {
+        id: eventData.organizerId,
+        firstName: 'Unknown',
+        lastName: 'Organizer'
+      };
+      
+      return {
+        ...transformFirestoreEvent(eventData, doc.id),
+        organizer,
+        category: null
+      };
+    });
   } catch (error) {
     console.error('Error searching events:', error);
     return [];
