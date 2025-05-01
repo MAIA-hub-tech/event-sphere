@@ -1,13 +1,16 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'standalone',
+  experimental: {
+    serverComponentsExternalPackages: ['@radix-ui/*'],
+    instrumentationHook: true
+  },
   typescript: {
-    ignoreBuildErrors: true, // Temporary during troubleshooting
+    ignoreBuildErrors: false
   },
   eslint: {
-    ignoreDuringBuilds: true, // Temporary during troubleshooting
-  },
-  output: 'standalone', // Remove if causing issues
+    ignoreDuringBuilds: false
+  }
 };
 
-export default nextConfig;
+module.exports = nextConfig;
