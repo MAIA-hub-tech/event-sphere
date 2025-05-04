@@ -1,0 +1,27 @@
+service: event-sphere-api
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: eu-north-1
+
+custom:
+  env: ${file(./env.js)}
+
+functions:
+  stripeWebhook:
+    handler: handler.stripeWebhook
+    events:
+      - http:
+          path: api/webhook
+          method: post
+          cors: true
+
+  createNotification:
+    handler: handler.createNotification
+    events:
+      - http:
+          path: notifications
+          method: post
+    environment:
+      FIREBASE_SERVICE_ACCOUNT_KEY: ${self:custom.env.FIREBASE_SERVICE_ACCOUNT_KEY}
