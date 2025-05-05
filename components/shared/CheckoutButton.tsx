@@ -7,30 +7,24 @@ import { auth, db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '../ui/button';
-import { doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { createStripeSession } from '@/lib/actions/stripe.actions';
 import { hasUserPurchasedTicket } from '@/lib/actions/order.actions';
 import { ClientEvent } from '@/types/event';
 import Checkout from './Checkout';
+import { toDate } from '@/lib/utils';
 
 interface CheckoutButtonProps {
   event: ClientEvent;
   className?: string;
 }
 
-const toDate = (value: Date | Timestamp | string | undefined | null): Date => {
-  if (!value) return new Date();
-  if (value instanceof Date) return value;
-  if (value instanceof Timestamp) return value.toDate();
-  if (typeof value === 'string') return new Date(value);
-  return new Date();
-};
-
 const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
   const [user, loading, error] = useAuthState(auth);
   const [alreadyPurchased, setAlreadyPurchased] = useState<boolean>(false);
-  const hasEventFinished = toDate(event.endDateTime) < new Date();
+  const endDate = toDate(event.endDateTime);
+  const hasEventFinished = endDate ? endDate < new Date() : false; // Added null check
   const eventId = event.id;
   const router = useRouter();
   const pathname = usePathname();
@@ -86,25 +80,8 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
       console.log('✅ Notification sent via Lambda');
       return true;
     } catch (lambdaError) {
-      console.warn('⚠️ Lambda failed, trying API fallback...', lambdaError);
-
-      try {
-        const apiResponse = await fetch('/api/create-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!apiResponse.ok) {
-          throw new Error(`API returned ${apiResponse.status}`);
-        }
-
-        console.log('✅ Notification sent via API fallback');
-        return true;
-      } catch (apiError) {
-        console.error('🔥 Both notification methods failed:', apiError);
-        return false;
-      }
+      console.error('🔥 Notification via Lambda failed:', lambdaError);
+      return false;
     }
   };
 

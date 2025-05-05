@@ -8,7 +8,7 @@ import EventForm from "@/components/shared/EventForm";
 import { getEventById } from "@/lib/firestore-utils";
 
 interface EventFormData {
-  id: string;
+  id: string; 
   title: string;
   description: string;
   location: string;
@@ -16,7 +16,7 @@ interface EventFormData {
   startDateTime: Date;
   endDateTime: Date;
   categoryId: string;
-  price: number;
+  price: string; // Changed from number to string to match EventFormProps
   isFree: boolean;
   url?: string;
   userId: string;
@@ -55,12 +55,10 @@ const UpdateEvent = () => {
           startDateTime: eventData.startDateTime?.toDate?.() || new Date(),
           endDateTime: eventData.endDateTime?.toDate?.() || new Date(),
           categoryId: eventData.categoryId || '',
-          price: typeof eventData.price === 'string' ? 
-            parseFloat(eventData.price) || 0 : 
-            eventData.price || 0,
+          price: typeof eventData.price === 'number' ? eventData.price.toString() : eventData.price || '0', // Convert number to string
           isFree: Boolean(eventData.isFree),
           url: eventData.url || '',
-          userId: eventData.userId || '' // Added userId field
+          userId: eventData.userId || ''
         };
 
         setEvent(formattedEvent);
@@ -105,7 +103,7 @@ const UpdateEvent = () => {
             type="Update" 
             event={event}
             eventId={event.id}
-            userId={event.userId} // Added userId prop
+            userId={event.userId}
             onSuccess={() => router.push(`/events/${event.id}`)}
           />
         )}

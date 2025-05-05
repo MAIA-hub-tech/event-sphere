@@ -1,4 +1,5 @@
 "use client";
+
 import { useAuth } from "@/lib/firebase/auth";
 import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -92,67 +93,71 @@ export function ProfileSection() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Updated: Centered avatar (h-32 w-32) with button below */}
-      <div className="flex flex-col items-center mt-10">
-        <Avatar className="h-32 w-32">
-          <AvatarImage src={user?.photoURL || ""} />
-          <AvatarFallback>
-            {user?.displayName?.charAt(0) || user?.email?.charAt(0) || "U"}
-          </AvatarFallback>
-        </Avatar>
-        <div className="mt-4">
-          <input
-            type="file"
-            id="profile-upload"
-            accept="image/*"
-            onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-            className="hidden"
+    <div className="bg-gray-50 p-6 rounded-2xl shadow-sm">
+      <h2 className="text-2xl font-semibold text-gray-900 mb-6">Profile Information</h2>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Centered avatar with button below */}
+        <div className="flex flex-col items-center">
+          <Avatar className="h-24 w-24">
+            <AvatarImage src={user?.photoURL || ""} />
+            <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-blue-500 text-white text-2xl">
+              {user?.displayName?.charAt(0) || user?.email?.charAt(0) || "U"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="mt-4">
+            <input
+              type="file"
+              id="profile-upload"
+              accept="image/*"
+              onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+              className="hidden"
+              disabled={isUploading}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isUploading}
+              onClick={() => document.getElementById('profile-upload')?.click()}
+              className="bg-cyan-500 text-white hover:bg-cyan-600 rounded-full px-6 py-2 text-base font-medium transition-colors shadow-sm"
+            >
+              {isUploading ? "Uploading..." : "Change Photo"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-6">
+          <div>
+            <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-2">
+              Full Name
+            </label>
+            <Input
+              id="displayName"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              disabled={isUploading}
+              className="bg-gray-50 h-12 px-4 rounded-full text-base focus:ring-cyan-500 focus:border-cyan-500 border-none shadow-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <Input
+              value={user?.email || ""}
+              readOnly
+              className="bg-gray-100 h-12 px-4 rounded-full text-base text-gray-500 border-none shadow-sm"
+            />
+          </div>
+
+          <Button 
+            type="submit" 
             disabled={isUploading}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isUploading}
-            onClick={() => document.getElementById('profile-upload')?.click()}
-            className="bg-cyan-500 rounded-full h-[54px]  text-[16px] font-medium leading-[24px] hidden sm:flex text-white"
+            className="w-full bg-cyan-500 text-white hover:bg-cyan-600 rounded-full h-12 text-base font-medium transition-colors shadow-sm"
           >
-            {isUploading ? "Uploading..." : "Change Photo"}
+            {isUploading ? "Saving..." : "Save Changes"}
           </Button>
         </div>
-      </div>
-
-      <div className="grid gap-4 mt-19">
-        <div>
-          <label htmlFor="displayName" className="b text-[16px] font-medium leading-[24px]">
-            Full Name
-          </label>
-          <Input
-            id="displayName"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            disabled={isUploading}
-            className="bg-gray-50 h-[54px] focus-visible:ring-offset-0 placeholder:text-gray-500 rounded-full text-[16px] font-medium leading-[24px px-4 py-3 border-none focus-visible:ring-transparent border-0 bg-gray-50"
-          />
-        </div>
-
-        <div>
-          <label className=" text-[16px] font-medium leading-[24px]">Email</label>
-          <Input
-            value={user?.email || ""}
-            readOnly
-            className="bg-gray-50 h-[54px] focus-visible:ring-offset-0 placeholder:text-gray-500 rounded-full text-[16px] font-medium leading-[24px px-4 py-3 border-none focus-visible:ring-transparent border-0 bg-gray-50"
-          />
-        </div>
-
-        <Button type="submit" disabled={isUploading}
-         size="lg"
-         className="bg-cyan-500 rounded-full h-[54px] text-[16px] font-normal leading-[24px]  hover:bg-cyan-700 hover:w-full hover:py-6"
-        >
-          {isUploading ? "Saving..." : "Save Changes"}
-        </Button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

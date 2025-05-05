@@ -22,6 +22,7 @@ import { db } from '@/lib/firebase';
 import { deleteFileFromS3 } from '@/lib/aws/s3';
 import { FirestoreEvent, ClientEvent, Category, Organizer } from '@/types/event';
 import { revalidatePath } from 'next/cache';
+import { toDate } from '@/lib/utils'; // Added import
 
 // Constants
 const EVENTS_PER_PAGE = 6;
@@ -210,13 +211,14 @@ export const createEvent = async (
   try {
     const { userId, startDateTime, endDateTime, ...eventData } = payload;
 
-    const startDate = new Date(startDateTime);
-    const endDate = new Date(endDateTime);
+    // Validate and convert dates using toDate
+    const startDate = toDate(startDateTime);
+    const endDate = toDate(endDateTime);
 
-    if (isNaN(startDate.getTime())) {
+    if (!startDate) {
       throw new Error('Invalid start date');
     }
-    if (isNaN(endDate.getTime())) {
+    if (!endDate) {
       throw new Error('Invalid end date');
     }
 
@@ -272,7 +274,7 @@ export const getEventById = async (eventId: string): Promise<ClientEvent | null>
     ]);
 
     return {
-      ...transformFirestoreEvent(eventData, eventDoc.id), // Fixed: Removed incorrect named parameter
+      ...transformFirestoreEvent(eventData, eventDoc.id),
       organizer,
       category,
     };
@@ -603,8 +605,14 @@ export const updateEvent = async (payload: {
     if (eventData.isFree !== undefined) updateData.isFree = eventData.isFree;
     if (eventData.price !== undefined) updateData.price = eventData.price;
     if (eventData.categoryId !== undefined) updateData.categoryId = eventData.categoryId;
-    if (eventData.startDateTime !== undefined) updateData.startDateTime = new Date(eventData.startDateTime);
-    if (eventData.endDateTime !== undefined) updateData.endDateTime = new Date(eventData.endDateTime);
+    if (eventData.startDateTime !== undefined) {
+      const startDate = toDate(eventData.startDateTime);
+      if (startDate) updateData.startDateTime = startDate;
+    }
+    if (eventData.endDateTime !== undefined) {
+      const endDate = toDate(eventData.endDateTime);
+      if (endDate) updateData.endDateTime = endDate;
+    }
     if (eventData.location !== undefined) updateData.location = eventData.location;
     if (eventData.isOnline !== undefined) updateData.isOnline = eventData.isOnline;
     if (eventData.url !== undefined) updateData.url = eventData.url;

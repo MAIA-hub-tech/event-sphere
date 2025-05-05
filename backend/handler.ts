@@ -1,4 +1,4 @@
-import { adminDb } from '../lib/firebase-admin-init';
+import { adminDb } from '../lib/firebase-admin'; // Fixed import path
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 export const createNotification = async (

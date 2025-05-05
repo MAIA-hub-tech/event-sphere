@@ -51,25 +51,8 @@ const Checkout = ({ event, userId, setAlreadyPurchased }: CheckoutProps) => {
       console.log('✅ Notification sent via Lambda');
       return true;
     } catch (lambdaError) {
-      console.warn('⚠️ Lambda failed, trying API fallback...', lambdaError);
-
-      try {
-        const apiResponse = await fetch('/api/create-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!apiResponse.ok) {
-          throw new Error(`API returned ${apiResponse.status}`);
-        }
-
-        console.log('✅ Notification sent via API fallback');
-        return true;
-      } catch (apiError) {
-        console.error('🔥 Both notification methods failed:', apiError);
-        return false;
-      }
+      console.error('🔥 Notification via Lambda failed:', lambdaError);
+      return false;
     }
   };
 

@@ -37,6 +37,15 @@ export const formatDateTime = {
   },
 };
 
+// Convert string, Date, or Timestamp to Date
+export const toDate = (value: string | Date | Timestamp | undefined | null): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (value instanceof Timestamp) return value.toDate();
+  if (typeof value === 'string') return new Date(value);
+  return null;
+};
+
 // URL Query Parameter Utilities
 interface FormUrlQueryParams {
   params: string;
