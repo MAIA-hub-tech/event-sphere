@@ -291,7 +291,7 @@ const EventForm = ({ type, event, eventId, userId, onSuccess }: EventFormProps) 
                       <div className="relative overflow-visible">
                         <DatePicker
                           selected={field.value}
-                          onChange={(date: Date | null) => date && field.onChange(date)}
+                          onChange={(date: Date | null) => field.onChange(date ?? new Date())}
                           showTimeSelect
                           dateFormat="MM/dd/yyyy h:mm aa"
                           minDate={new Date()}
@@ -315,7 +315,7 @@ const EventForm = ({ type, event, eventId, userId, onSuccess }: EventFormProps) 
                       <div className="relative overflow-visible">
                         <DatePicker
                           selected={field.value}
-                          onChange={(date: Date | null) => date && field.onChange(date)}
+                          onChange={(date: Date | null) => field.onChange(date ?? new Date())}
                           showTimeSelect
                           dateFormat="MM/dd/yyyy h:mm aa"
                           minDate={form.getValues("startDateTime")}
@@ -399,7 +399,7 @@ const EventForm = ({ type, event, eventId, userId, onSuccess }: EventFormProps) 
                 name="url"
                 render={({ field }) => (
                   <FormItem className="w-full">
-                    <FormLabel className="text-gray-700 font-bold text-lg">Event URL</FormLabel>
+                    <FormLabel className="text-gray-700 font-bold text-lg">Event URL (Optional)</FormLabel>
                     <FormControl>
                       <div className="relative flex items-center h-12 w-full rounded-full bg-gray-50 px-6 py-3 transition-shadow duration-300 shadow-md hover:shadow-lg">
                         <Image
@@ -410,8 +410,10 @@ const EventForm = ({ type, event, eventId, userId, onSuccess }: EventFormProps) 
                           className="mr-3"
                         />
                         <Input
-                          placeholder="https://example.com"
+                          placeholder="https://example.com (optional)"
                           {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value || undefined)}
                           className="bg-gray-50 h-12 focus-visible:ring-offset-0 placeholder:text-gray-500 rounded-full text-lg font-normal leading-[28px] px-4 py-3 border-none focus-visible:ring-cyan-500 flex-1"
                         />
                       </div>

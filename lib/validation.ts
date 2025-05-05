@@ -29,7 +29,10 @@ const baseEventSchema = z.object({
   isFree: z.boolean(),
   url: z.string().url({
     message: "Please enter a valid URL",
-  }).optional(),
+  }).optional().or(z.literal('')),
+  creatorId: z.string().min(1, {
+    message: "Creator ID is required",
+  }),
 });
 
 // Add date validation separately
