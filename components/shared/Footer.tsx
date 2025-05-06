@@ -67,7 +67,7 @@ const Footer = () => {
               </a>
             </Button>
           </div>
-          <p className="text-gray-400 text-sm mt-4">2025 Event Sphere. All Rights Reserved.</p>
+          <p className="text-gray-400 text-sm mt-4">2025 Event Sphere. All Rights Reserved. By Mohamed-Amin Abdillahi</p>
         </div>
       </div>
     </footer>
