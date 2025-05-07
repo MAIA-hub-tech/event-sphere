@@ -8,20 +8,16 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
-import { StandardRetryStrategy } from '@aws-sdk/middleware-retry';
 
-// Configure AWS S3 Client with custom retry strategy
+// Configure AWS S3 Client with modern retry configuration
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
-  retryStrategy: new StandardRetryStrategy(async () => 5, {
-    delayDecider: (delayBase: number, attempts: number) => {
-      return 1000 * Math.pow(2, attempts - 1); // Exponential backoff starting at 1000ms
-    },
-  }),
+  retryMode: 'standard', // Use built-in standard retry mode
+  maxAttempts: 5, // Maximum number of retry attempts
 });
 
 /**

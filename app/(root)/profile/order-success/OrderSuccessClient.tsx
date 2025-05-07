@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import { getEventById } from '@/lib/actions/event.actions';
 import { Loader2 } from 'lucide-react';
@@ -127,23 +128,23 @@ export default function OrderSuccessClient() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
-        <p>Verifying your order...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 bg-gradient-to-b from-gray-50 to-white">
+        <Loader2 className="h-10 w-10 animate-spin text-cyan-600" />
+        <p className="text-xl font-medium text-gray-700">Verifying your order...</p>
       </div>
     );
   }
 
   if (!orderDetails) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-4 text-center">
-        <h1 className="text-2xl font-bold text-red-500">Order Verification Failed</h1>
-        <p>We couldn't confirm your ticket purchase</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-4 text-center bg-gradient-to-b from-gray-50 to-white">
+        <h1 className="text-5xl md:text-6xl font-extrabold text-red-500 animate-fade">Order Verification Failed</h1>
+        <p className="text-xl font-medium text-gray-700">We couldn't confirm your ticket purchase.</p>
         <div className="flex gap-4 mt-6">
-          <Button asChild>
+          <Button asChild className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-8 py-4 text-lg">
             <Link href="/profile">Back to Profile</Link>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="border-cyan-600 text-cyan-600 hover:bg-cyan-50 font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-8 py-4 text-lg">
             <Link href="/">Return Home</Link>
           </Button>
         </div>
@@ -152,54 +153,58 @@ export default function OrderSuccessClient() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-4 max-w-md mx-auto">
-      {/* Success Icon */}
-      <div className="bg-green-100 p-4 rounded-full">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-12 w-12 text-green-600"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      </div>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white">
+      <div className="flex-1 container mx-auto px-4 py-8 md:py-12 lg:px-8 2xl:max-w-7xl flex items-center justify-center">
+        <Card className="max-w-2xl w-full p-10 rounded-xl shadow-lg bg-white border-none animate-fade">
+          {/* Success Header */}
+          <div className="flex flex-col items-center gap-4 mb-8">
+            <div className="bg-green-100 p-4 rounded-full shadow-md">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-16 w-16 text-green-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 text-center">
+              {orderDetails.isFree ? 'Ticket Confirmed!' : 'Payment Successful!'}
+            </h1>
+          </div>
 
-      {/* Success Message */}
-      <h1 className="text-3xl font-bold text-center">
-        {orderDetails.isFree ? 'Ticket Confirmed!' : 'Payment Successful!'}
-      </h1>
+          {/* Order Details */}
+          <div className="space-y-3 text-center">
+            <p className="text-2xl font-semibold text-gray-800">{orderDetails.eventTitle}</p>
+            {!orderDetails.isFree && (
+              <p className="text-xl font-medium text-gray-700">Amount: £{(orderDetails.amount || 0).toFixed(2)}</p>
+            )}
+            {orderDetails.createdAt && (
+              <p className="text-base text-gray-500">
+                Purchased on: {orderDetails.createdAt.toLocaleDateString()}
+              </p>
+            )}
+            <p className="text-base text-gray-500">Order #: {orderDetails.orderId}</p>
+          </div>
 
-      {/* Order Details */}
-      <div className="text-center space-y-2">
-        <p className="font-medium text-lg">{orderDetails.eventTitle}</p>
-        {!orderDetails.isFree && (
-          <p className="text-gray-600">Amount: £{(orderDetails.amount || 0).toFixed(2)}</p>
-        )}
-        {orderDetails.createdAt && (
-          <p className="text-sm text-gray-500">
-            Purchased on: {orderDetails.createdAt.toLocaleDateString()}
-          </p>
-        )}
-        <p className="text-sm text-gray-500">Order #: {orderDetails.orderId}</p>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-4 mt-8 w-full">
-        <Button asChild className="flex-1 bg-cyan-500 rounded-full hover:bg-cyan-700">
-          <Link href={`/events/${orderDetails.eventId}`}>
-            View Event
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="flex-1 bg-cyan-500 rounded-full hover:bg-cyan-700 text-amber-50">
-          <Link href="/profile#my-tickets">My Tickets</Link>
-        </Button>
+          {/* Action Buttons */}
+          <div className="flex gap-4 mt-10 w-full">
+            <Button asChild className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-8 py-4 text-lg">
+              <Link href={`/events/${orderDetails.eventId}`}>
+                View Event
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="flex-1 border-cyan-600 text-cyan-600 hover:bg-cyan-50 font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-8 py-4 text-lg">
+              <Link href="/profile#my-tickets">My Tickets</Link>
+            </Button>
+          </div>
+        </Card>
       </div>
     </div>
   );

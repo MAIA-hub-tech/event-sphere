@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -24,7 +24,7 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
   const [user, loading, error] = useAuthState(auth);
   const [alreadyPurchased, setAlreadyPurchased] = useState<boolean>(false);
   const endDate = toDate(event.endDateTime);
-  const hasEventFinished = endDate ? endDate < new Date() : false; // Added null check
+  const hasEventFinished = endDate ? endDate < new Date() : false;
   const eventId = event.id;
   const router = useRouter();
   const pathname = usePathname();
@@ -127,24 +127,34 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
   return (
     <div className="flex items-center gap-3">
       {alreadyPurchased ? (
-        <div className="flex items-center gap-2 p-2 bg-green-100 rounded-full px-4 py-2 shadow-md">
-          <svg 
-            className="w-5 h-5 text-green-600" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24" 
-            xmlns="http://www.w3.org/2000/svg"
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 p-2 bg-green-100 rounded-full px-4 py-2 shadow-md">
+            <svg
+              className="w-5 h-5 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <p className="text-green-600 font-semibold text-sm">
+              Ticket Booked Successfully!
+            </p>
+          </div>
+          <Button
+            asChild
+            className="bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-8 py-3 text-base"
           >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth="2" 
-              d="M5 13l4 4L19 7" 
-            />
-          </svg>
-          <p className="text-green-600 font-semibold text-sm">
-            Ticket Booked Successfully!
-          </p>
+            <Link href={`/events/${event.id}/forum`}>
+              Forum
+            </Link>
+          </Button>
         </div>
       ) : hasEventFinished ? (
         <p className="p-2 text-red-400 font-semibold">Tickets no longer available</p>

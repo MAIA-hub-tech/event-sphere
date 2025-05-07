@@ -4,9 +4,14 @@ provider:
   name: aws
   runtime: nodejs18.x
   region: eu-north-1
-
-custom:
-  env: ${file(./env.js)}
+  stage: dev
+  versionFunctions: true
+  environment:
+    STRIPE_SECRET_KEY: ${env:STRIPE_SECRET_KEY}
+    STRIPE_WEBHOOK_SECRET: ${env:STRIPE_WEBHOOK_SECRET}
+    FIREBASE_PROJECT_ID: ${env:FIREBASE_PROJECT_ID}
+    FIREBASE_CLIENT_EMAIL: ${env:FIREBASE_CLIENT_EMAIL}
+    FIREBASE_PRIVATE_KEY: ${env:FIREBASE_PRIVATE_KEY}
 
 functions:
   stripeWebhook:
@@ -23,5 +28,8 @@ functions:
       - http:
           path: notifications
           method: post
-    environment:
-      FIREBASE_SERVICE_ACCOUNT_KEY: ${self:custom.env.FIREBASE_SERVICE_ACCOUNT_KEY}
+          cors: true
+
+custom:
+  build:
+    esbuild: true

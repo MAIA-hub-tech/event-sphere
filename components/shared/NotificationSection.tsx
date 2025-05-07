@@ -74,29 +74,27 @@ export default function NotificationSection() {
     }
   };
 
-  if (loading) return <p className="p-4 text-center text-gray-500">Loading notifications...</p>;
-  if (error) return <p className="p-4 text-red-500">Error loading notifications: {error.message}</p>;
-  if (!notifications?.size) return <p className="p-4 text-center text-gray-500">No notifications yet</p>;
+  if (loading) return <p className="p-4 text-center text-gray-500 text-lg animate-pulse">Loading notifications...</p>;
+  if (error) return <p className="p-4 text-red-500 text-lg">Error loading notifications: {error.message}</p>;
+  if (!notifications?.size) return <p className="p-4 text-center text-gray-500 text-lg">No notifications yet</p>;
 
   return (
-    <div className="bg-gray-50 p-6 rounded-2xl shadow-sm">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-2xl font-semibold text-gray-900">Notifications</h3>
-        <div className="flex gap-2">
+    <div className="bg-gradient-to-b from-gray-50 to-white p-8 md:p-10 rounded-3xl shadow-lg animate-fade">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <h3 className="text-4xl md:text-5xl font-extrabold text-gray-900">Notifications</h3>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <Button
             variant="outline"
-            size="sm"
             onClick={markAllAsRead}
-            className="text-cyan-500 hover:bg-cyan-50 rounded-full shadow-sm"
+            className="w-full md:w-auto bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-6 py-2"
             disabled={!notifications.docs.some(doc => !doc.data().read)}
           >
             Mark All as Read
           </Button>
           <Button
             variant="outline"
-            size="sm"
             onClick={deleteAllRead}
-            className="text-red-500 hover:bg-red-50 rounded-full shadow-sm"
+            className="w-full md:w-auto border-red-600 text-red-600 hover:bg-red-50 font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-6 py-2"
             disabled={!notifications.docs.some(doc => doc.data().read)}
           >
             Delete All Read
@@ -104,7 +102,7 @@ export default function NotificationSection() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         <AnimatePresence>
           {notifications.docs.map((doc) => {
             const data = doc.data();
@@ -118,10 +116,10 @@ export default function NotificationSection() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
-                className={`relative p-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md ${
+                className={`relative p-5 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg ${
                   isRead 
                     ? "bg-white"
-                    : "bg-gradient-to-r from-blue-50 to-cyan-50"
+                    : "bg-gradient-to-r from-cyan-100 to-blue-100"
                 }`}
                 onClick={() => !isRead && markAsRead(doc.id)}
                 onMouseEnter={() => setHoveredNotification(doc.id)}
@@ -131,37 +129,37 @@ export default function NotificationSection() {
                 {isRead && hoveredNotification === doc.id && (
                   <button
                     onClick={(e) => deleteNotification(doc.id, e)}
-                    className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-200 transition-colors"
+                    className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors"
                     aria-label="Delete notification"
                   >
-                    <X className="w-4 h-4 text-gray-500 hover:text-red-500" />
+                    <X className="w-5 h-5 text-gray-500 hover:text-red-500" />
                   </button>
                 )}
 
                 {/* Notification header */}
-                <div className="flex justify-between items-start pr-6">
-                  <h3 className={`text-base font-medium flex items-center gap-2 ${
+                <div className="flex justify-between items-start pr-8">
+                  <h3 className={`text-lg font-semibold flex items-center gap-2 ${
                     isRead ? "text-gray-800" : "text-blue-800"
                   }`}>
                     {data.type === "event_booking" && (
-                      <span className="text-xl">🎟️</span>
+                      <span className="text-2xl">🎟️</span>
                     )}
                     {data.title}
                   </h3>
                   
                   {/* Blue dot - only for unread */}
                   {!isRead && (
-                    <span className="absolute top-3 right-3 w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 animate-pulse" />
+                    <span className="absolute top-4 right-4 w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 animate-pulse" />
                   )}
                 </div>
 
-                <p className={`mt-1 text-sm ${
+                <p className={`mt-2 text-base ${
                   isRead ? "text-gray-600" : "text-blue-700"
                 }`}>
                   {data.message}
                 </p>
                 
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-sm text-gray-400 mt-2">
                   {formatDateTime.full(timestamp)}
                 </p>
               </motion.div>
