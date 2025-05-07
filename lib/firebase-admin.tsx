@@ -18,11 +18,15 @@ const initializeFirebaseAdmin = () => {
       throw new Error('Missing Firebase Admin SDK environment variables: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY');
     }
 
+    // Log the processed private key (first few characters for debugging)
+    const processedPrivateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+    console.log('Processed FIREBASE_PRIVATE_KEY (first 50 chars):', processedPrivateKey.substring(0, 50));
+
     const app = admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        privateKey: processedPrivateKey,
       }),
     });
 
