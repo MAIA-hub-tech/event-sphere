@@ -3,25 +3,56 @@ import admin from 'firebase-admin';
 import { createEvent, updateEvent } from '@/lib/actions/event.actions';
 import { uploadFileToS3 } from '@/lib/aws/s3';
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!admin.apps.length) {
+// Function to initialize or re-initialize Firebase Admin SDK
+const initializeFirebaseAdmin = () => {
+  // Always re-initialize to ensure correct environment variables are used
+  if (admin.apps.length > 0) {
+    console.log('Firebase Admin SDK already initialized, deleting existing app');
+    admin.apps.forEach((app: admin.app.App | null) => {
+      if (app) {
+        app.delete();
+      }
+    });
+  }
+
   try {
+    console.log('Initializing Firebase Admin SDK in /api/events...');
+    console.log('Environment variables in /api/events:', {
+      FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || 'Not set',
+      FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL || 'Not set',
+      FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY ? 'Set (hidden for security)' : 'Not set',
+    });
+
+    const processedPrivateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    console.log('Processed FIREBASE_PRIVATE_KEY (first 50 chars) in /api/events:', processedPrivateKey?.substring(0, 50));
+
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
       throw new Error('Missing Firebase Admin SDK environment variables: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY');
     }
 
-    admin.initializeApp({
+    const app = admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        privateKey: processedPrivateKey,
       }),
     });
+
+    if (!app) {
+      throw new Error('Failed to initialize Firebase Admin SDK: app is null');
+    }
+
+    console.log('Firebase Admin SDK initialized successfully in /api/events');
+    return app;
   } catch (error) {
-    console.error('Error initializing Firebase Admin SDK:', error);
+    console.error('Error initializing Firebase Admin SDK in /api/events:', error);
     throw new Error('Failed to initialize Firebase Admin SDK');
   }
-}
+};
+
+// Initialize Firebase Admin SDK for this request
+const app = initializeFirebaseAdmin();
+const adminAuth = app.auth();
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,11 +70,13 @@ export async function POST(req: NextRequest) {
     // Validate the token
     let decodedToken;
     try {
-      decodedToken = await admin.auth().verifyIdToken(idToken);
+      console.log('Verifying ID token with Firebase Admin SDK...');
+      decodedToken = await adminAuth.verifyIdToken(idToken);
       console.log('Decoded token:', decodedToken);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during token verification';
-      console.error('Token verification failed:', errorMessage);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('Token verification failed:', { errorMessage, errorStack });
       return NextResponse.json(
         { error: 'Unauthorized - Invalid token', details: errorMessage },
         { status: 401 }
@@ -59,7 +92,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch user details for organizer info
-    const userRecord = await admin.auth().getUser(userId);
+    const userRecord = await adminAuth.getUser(userId);
     const currentUser = {
       uid: userId,
       firstName: userRecord.displayName ? userRecord.displayName.split(' ')[0] : 'Unknown',
@@ -118,7 +151,8 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Event creation error:', errorMessage);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Event creation error:', { errorMessage, errorStack });
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
@@ -142,11 +176,13 @@ export async function PUT(req: NextRequest) {
     // Validate the token
     let decodedToken;
     try {
-      decodedToken = await admin.auth().verifyIdToken(idToken);
+      console.log('Verifying ID token with Firebase Admin SDK...');
+      decodedToken = await adminAuth.verifyIdToken(idToken);
       console.log('Decoded token:', decodedToken);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error during token verification';
-      console.error('Token verification failed:', errorMessage);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('Token verification failed:', { errorMessage, errorStack });
       return NextResponse.json(
         { error: 'Unauthorized - Invalid token', details: errorMessage },
         { status: 401 }
@@ -206,7 +242,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json(updatedEvent, { status: 200 });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Event update error:', errorMessage);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Event update error:', { errorMessage, errorStack });
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
