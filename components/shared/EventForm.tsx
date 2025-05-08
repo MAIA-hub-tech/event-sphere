@@ -110,10 +110,14 @@ const EventForm = ({ type, event, eventId, userId, onSuccess }: EventFormProps) 
       if (files.length > 0) {
         formData.append('imageFile', files[0]);
       }
+      // Add eventId for update requests
+      if (type === 'Update' && eventId) {
+        formData.append('eventId', eventId);
+      }
 
       console.log('Submitting FormData:', Array.from(formData.entries()));
 
-      const endpoint = type === 'Create' ? '/api/events' : `/api/events/${eventId}`;
+      const endpoint = '/api/events'; // Always use /api/events for both POST and PUT
       const method = type === 'Create' ? 'POST' : 'PUT';
 
       const response = await fetch(endpoint, {
@@ -150,7 +154,7 @@ const EventForm = ({ type, event, eventId, userId, onSuccess }: EventFormProps) 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       console.error('Submission error:', errorMessage);
-      toast.error('Failed to create event', {
+      toast.error(`Failed to ${type.toLowerCase()} event`, {
         description: errorMessage,
       });
     } finally {

@@ -7,14 +7,17 @@ import { toast } from "sonner";
 import { createStripeSession, verifyStripeSession } from "@/lib/actions/stripe.actions";
 import { CheckoutEventInput } from "@/types";
 import { hasUserPurchasedTicket } from "@/lib/actions/order.actions";
+import { Loader2 } from 'lucide-react';
 
 interface CheckoutProps {
   event: CheckoutEventInput;
   userId: string;
   setAlreadyPurchased: (value: boolean) => void;
+  setIsCheckoutLoading: (value: boolean) => void; // Add setter prop
+  isCheckoutLoading: boolean; // Add loading state prop
 }
 
-const Checkout = ({ event, userId, setAlreadyPurchased }: CheckoutProps) => {
+const Checkout = ({ event, userId, setAlreadyPurchased, setIsCheckoutLoading, isCheckoutLoading }: CheckoutProps) => {
   const [localAlreadyPurchased, setLocalAlreadyPurchased] = useState(false);
   const [orderProcessed, setOrderProcessed] = useState(false);
   const router = useRouter();
@@ -128,6 +131,7 @@ const Checkout = ({ event, userId, setAlreadyPurchased }: CheckoutProps) => {
       return toast.error("You already own a ticket for this event");
     }
 
+    setIsCheckoutLoading(true); // Set loading state
     try {
       const sessionUrl = await createStripeSession({
         eventId: event.id,
@@ -144,6 +148,7 @@ const Checkout = ({ event, userId, setAlreadyPurchased }: CheckoutProps) => {
     } catch (error) {
       toast.error("Payment failed");
       console.error("❌ Checkout error:", error);
+      setIsCheckoutLoading(false); // Reset loading state on error
     }
   };
 
@@ -173,10 +178,17 @@ const Checkout = ({ event, userId, setAlreadyPurchased }: CheckoutProps) => {
         <Button 
           onClick={handleCheckout} 
           size="lg" 
-          disabled={localAlreadyPurchased}
-          className="rounded-full bg-cyan-500 hover:bg-cyan-600 text-white transition-colors duration-300 sm:w-fit"
+          disabled={isCheckoutLoading}
+          className={`rounded-full bg-cyan-500 hover:bg-cyan-600 text-white transition-colors duration-300 sm:w-fit flex items-center justify-center gap-2 ${isCheckoutLoading ? "cursor-not-allowed opacity-75" : ""}`}
         >
-          Buy Ticket
+          {isCheckoutLoading ? (
+            <>
+              <Loader2 className="animate-spin h-5 w-5 text-white" />
+              Processing...
+            </>
+          ) : (
+            "Buy Ticket"
+          )}
         </Button>
       )}
     </div>

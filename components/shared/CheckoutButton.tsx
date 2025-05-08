@@ -23,6 +23,7 @@ interface CheckoutButtonProps {
 const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
   const [user, loading, error] = useAuthState(auth);
   const [alreadyPurchased, setAlreadyPurchased] = useState<boolean>(false);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const endDate = toDate(event.endDateTime);
   const hasEventFinished = endDate ? endDate < new Date() : false;
   const eventId = event.id;
@@ -30,9 +31,10 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
   const pathname = usePathname();
 
   const price = typeof event.price === 'string' ? parseFloat(event.price) || 0 : event.price;
+  const isEventCreator = user && event.userId === user.uid; // Check if the user is the event creator
 
   const checkPurchaseStatus = useCallback(async () => {
-    if (user && eventId) {
+    if (user && eventId && !isEventCreator) { // Skip purchase check for event creator
       try {
         console.log('Checking purchase status for event:', eventId, 'and user:', user.uid);
         const purchased = await hasUserPurchasedTicket(eventId, user.uid);
@@ -42,7 +44,7 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
         console.error('Error checking ticket purchase:', error);
       }
     }
-  }, [user, eventId]);
+  }, [user, eventId, isEventCreator]);
 
   useEffect(() => {
     checkPurchaseStatus();
@@ -89,6 +91,7 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
     if (alreadyPurchased) return toast.error('You already have a ticket');
     if (!user) return toast.error('Please sign in');
 
+    setIsCheckoutLoading(true);
     try {
       const orderId = `${eventId}_${user.uid}_${Date.now()}`;
       const orderRef = doc(db, 'orders', orderId);
@@ -113,6 +116,8 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
     } catch (error: unknown) {
       console.error('Checkout error:', error);
       toast.error('Booking failed. Please try again.');
+    } finally {
+      setIsCheckoutLoading(false);
     }
   };
 
@@ -126,7 +131,18 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
 
   return (
     <div className="flex items-center gap-3">
-      {alreadyPurchased ? (
+      {isEventCreator ? (
+        // Show Forum button directly for event creators
+        <Button
+          asChild
+          className="bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-8 py-3 text-base"
+        >
+          <Link href={`/events/${event.id}/forum`}>
+            Forum
+          </Link>
+        </Button>
+      ) : alreadyPurchased ? (
+        // Show purchased state for non-creators who have a ticket
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 p-2 bg-green-100 rounded-full px-4 py-2 shadow-md">
             <svg
@@ -166,15 +182,25 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
         <Button
           onClick={handleFreeCheckout}
           size="lg"
-          className={`rounded-full bg-cyan-500 hover:bg-cyan-600 text-white transition-colors duration-300 ${className}`}
+          disabled={isCheckoutLoading}
+          className={`rounded-full bg-cyan-500 hover:bg-cyan-600 text-white transition-colors duration-300 flex items-center justify-center gap-2 ${className} ${isCheckoutLoading ? "cursor-not-allowed opacity-75" : ""}`}
         >
-          Get Free Ticket
+          {isCheckoutLoading ? (
+            <>
+              <Loader2 className="animate-spin h-5 w-5 text-white" />
+              Processing...
+            </>
+          ) : (
+            "Get Free Ticket"
+          )}
         </Button>
       ) : (
         <Checkout
           event={event}
           userId={user.uid}
           setAlreadyPurchased={setAlreadyPurchased}
+          setIsCheckoutLoading={setIsCheckoutLoading}
+          isCheckoutLoading={isCheckoutLoading}
         />
       )}
     </div>

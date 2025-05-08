@@ -194,7 +194,7 @@ export default function OrderSuccessClient() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 mt-10 w-full">
+          <div className="flex flex-col sm:flex-row gap-4 mt-10 w-full">
             <Button asChild className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-full shadow-md hover:shadow-lg transition-shadow duration-300 px-8 py-4 text-lg">
               <Link href={`/events/${orderDetails.eventId}`}>
                 View Event
