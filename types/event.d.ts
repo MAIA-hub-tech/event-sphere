@@ -11,6 +11,7 @@ export interface Organizer {
   id: string;
   firstName?: string;
   lastName?: string;
+  displayName?: string; // Add displayName field
   email?: string;
   photoURL?: string;
 }
@@ -174,4 +175,11 @@ export interface UpdateEventPayload {
 export interface DeleteEventPayload {
   eventId: string;
   userId: string;
+}
+
+export interface CheckoutEventInput {
+  id: string;
+  title: string;
+  price: number;
+  isFree: boolean;
 }

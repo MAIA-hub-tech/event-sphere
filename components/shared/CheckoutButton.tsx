@@ -31,10 +31,10 @@ const CheckoutButton = ({ event, className }: CheckoutButtonProps) => {
   const pathname = usePathname();
 
   const price = typeof event.price === 'string' ? parseFloat(event.price) || 0 : event.price;
-  const isEventCreator = user && event.userId === user.uid; // Check if the user is the event creator
+  const isEventCreator = user && (event.userId === user.uid || event.organizerId === user.uid); // Check both userId and organizerId
 
   const checkPurchaseStatus = useCallback(async () => {
-    if (user && eventId && !isEventCreator) { // Skip purchase check for event creator
+    if (user && eventId && !isEventCreator) {
       try {
         console.log('Checking purchase status for event:', eventId, 'and user:', user.uid);
         const purchased = await hasUserPurchasedTicket(eventId, user.uid);

@@ -21,9 +21,29 @@ export default function EventForumPage() {
   const [eventTitle, setEventTitle] = useState('');
   const [newComment, setNewComment] = useState('');
   const [hasBooked, setHasBooked] = useState(false);
+  const [isEventCreator, setIsEventCreator] = useState(false); // New state to track if user is the event creator
   const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<{ firstName?: string; lastName?: string; displayName?: string; photoURL?: string } | null>(null);
 
-  // Check if the user has booked the event
+  // Fetch user profile from Firestore
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          setUserProfile(userDoc.data());
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user]);
+
+  // Check if the user has booked the event or is the event creator
   useEffect(() => {
     const checkBookingStatus = async () => {
       if (!user || !eventId) {
@@ -32,22 +52,37 @@ export default function EventForumPage() {
       }
 
       try {
-        const ordersQuery = query(
-          collection(db, 'orders'),
-          where('buyerId', '==', user.uid),
-          where('eventId', '==', eventId),
-          where('status', '==', 'completed')
-        );
-        const ordersSnapshot = await getDocs(ordersQuery);
-        setHasBooked(!ordersSnapshot.empty);
-
-        // Fetch event title
+        // Fetch event to check if the user is the creator
         const eventDoc = await getDoc(doc(db, 'events', eventId as string));
         if (eventDoc.exists()) {
-          setEventTitle(eventDoc.data()?.title || 'Event Forum');
+          const eventData = eventDoc.data();
+          setEventTitle(eventData?.title || 'Event Forum');
+          // Check if the user is the event creator
+          const creatorCheck = user.uid === eventData.userId || user.uid === eventData.organizerId;
+          setIsEventCreator(creatorCheck);
+
+          // If the user is the event creator, no need to check for a ticket
+          if (creatorCheck) {
+            setHasBooked(true);
+            setLoading(false);
+            return;
+          }
+
+          // Otherwise, check if the user has purchased a ticket
+          const ordersQuery = query(
+            collection(db, 'orders'),
+            where('buyerId', '==', user.uid),
+            where('eventId', '==', eventId),
+            where('status', '==', 'completed')
+          );
+          const ordersSnapshot = await getDocs(ordersQuery);
+          setHasBooked(!ordersSnapshot.empty);
+        } else {
+          setHasBooked(false);
         }
       } catch (error) {
         console.error('Error checking booking status or fetching event:', error);
+        setHasBooked(false);
       } finally {
         setLoading(false);
       }
@@ -71,9 +106,17 @@ export default function EventForumPage() {
     if (!user || !newComment.trim()) return;
 
     try {
+      // Construct user name from Firestore data
+      let userName = 'Anonymous';
+      if (userProfile?.firstName || userProfile?.lastName) {
+        userName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim();
+      } else if (userProfile?.displayName) {
+        userName = userProfile.displayName;
+      }
+
       await addDoc(collection(db, `events/${eventId}/comments`), {
         userId: user.uid,
-        userName: user.displayName || 'Anonymous',
+        userName: userName,
         text: newComment.trim(),
         timestamp: Timestamp.fromDate(new Date()),
       });
@@ -108,6 +151,14 @@ export default function EventForumPage() {
     return notFound();
   }
 
+  // Construct user name for display
+  let userName = 'Anonymous';
+  if (userProfile?.firstName || userProfile?.lastName) {
+    userName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim();
+  } else if (userProfile?.displayName) {
+    userName = userProfile.displayName;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white">
       <div className="flex-1 container mx-auto px-4 py-8 md:py-12 lg:px-8 2xl:max-w-7xl">
@@ -125,16 +176,16 @@ export default function EventForumPage() {
         <Card className="p-6 mb-10 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl shadow-lg">
           <form onSubmit={handlePostComment} className="flex items-center gap-4">
             <Avatar className="h-10 w-10">
-              {isGoogleUser() && user?.photoURL ? (
+              {isGoogleUser() && userProfile?.photoURL ? (
                 <AvatarImage
-                  src={user.photoURL}
+                  src={userProfile.photoURL}
                   alt="User profile"
                   className="h-full w-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               ) : (
                 <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-blue-500 text-white font-semibold">
-                  {getInitials(user?.displayName || user?.email || 'U')}
+                  {getInitials(userName)}
                 </AvatarFallback>
               )}
             </Avatar>

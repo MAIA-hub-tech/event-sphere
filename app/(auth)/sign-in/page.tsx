@@ -7,11 +7,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { FirebaseError } from 'firebase/app'; // Import FirebaseError for better type safety
+import { FirebaseError } from 'firebase/app';
 
 export default function SignInPage() {
   const { user, loading: authLoading, emailLogin, googleLogin } = useAuth();
@@ -75,7 +75,7 @@ export default function SignInPage() {
       await emailLogin(formData.email.trim(), formData.password);
       toast.success("Welcome back!", { position: "top-center" });
     } catch (error) {
-      const firebaseError = error as FirebaseError; // Cast error to FirebaseError for better type safety
+      const firebaseError = error as FirebaseError;
       let errorMessage = "Sign in failed. Please try again.";
       
       switch (firebaseError.code) {
@@ -115,18 +115,54 @@ export default function SignInPage() {
       const result = await googleLogin();
       const user = result.user;
       
-      // Save user data to Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        displayName: user.displayName,
-        email: user.email,
+      // Check if the user document exists and update firstName/lastName if necessary
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      let firstName = '';
+      let lastName = '';
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        // If firstName or lastName are missing or default, parse from displayName
+        if (
+          (!userData.firstName || userData.firstName === 'Unknown') &&
+          (!userData.lastName || userData.lastName === 'Organizer') &&
+          user.displayName
+        ) {
+          const nameParts = user.displayName.trim().split(/\s+/);
+          firstName = nameParts[0] || user.email?.split('@')[0] || '';
+          lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        } else {
+          firstName = userData.firstName || '';
+          lastName = userData.lastName || '';
+        }
+      } else {
+        // New user, parse displayName
+        if (user.displayName) {
+          const nameParts = user.displayName.trim().split(/\s+/);
+          firstName = nameParts[0] || user.email?.split('@')[0] || '';
+          lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        } else {
+          firstName = user.email?.split('@')[0] || '';
+          lastName = '';
+        }
+      }
+
+      // Save or update user data in Firestore
+      await setDoc(userDocRef, {
+        displayName: user.displayName || '',
+        firstName: firstName || user.email?.split('@')[0] || '',
+        lastName: lastName || '',
+        email: user.email || '',
         photoURL: user.photoURL || "/assets/icons/default-avatar.svg",
         provider: 'google',
-        lastLogin: new Date().toISOString()
+        lastLogin: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }, { merge: true });
       
       toast.success("Signed in with Google successfully!", { position: "top-center" });
     } catch (error) {
-      const firebaseError = error as FirebaseError; // Cast error to FirebaseError for better type safety
+      const firebaseError = error as FirebaseError;
       console.error("Google sign in error:", firebaseError);
       
       let errorMessage = "Google sign in failed. Please try again.";

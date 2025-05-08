@@ -17,7 +17,7 @@ type CardProps = {
     isFree: boolean;
     price: number;
     category?: { id: string; name: string };
-    organizer?: { id: string; firstName: string; lastName: string; photoURL?: string };
+    organizer?: { id: string; firstName: string; lastName: string; displayName?: string; photoURL?: string };
     userId: string;
   };
   hasOrderLink?: boolean;
@@ -36,16 +36,27 @@ const Card = ({ event, hasOrderLink = false, hidePrice = false }: CardProps) => 
 
   // Get organizer name with proper fallbacks
   const getOrganizerName = () => {
-    if (event.organizer?.firstName || event.organizer?.lastName) {
-      return `${event.organizer.firstName || ''} ${event.organizer.lastName || ''}`.trim();
+    // If firstName and lastName are set and not default values, use them
+    if (
+      event.organizer?.firstName &&
+      event.organizer?.lastName &&
+      event.organizer.firstName !== 'Unknown' &&
+      event.organizer.lastName !== 'Organizer'
+    ) {
+      return `${event.organizer.firstName} ${event.organizer.lastName}`.trim();
     }
-    return 'Organizer';
+    // Otherwise, prefer displayName if available
+    if (event.organizer?.displayName) {
+      return event.organizer.displayName;
+    }
+    // Fallback to default
+    return 'Unknown Organizer';
   };
 
   // Get organizer initial from name
   const getOrganizerInitial = () => {
     const name = getOrganizerName();
-    if (name === 'Organizer') return 'O';
+    if (name === 'Unknown Organizer') return 'O';
     return name.charAt(0).toUpperCase();
   };
 
@@ -71,7 +82,7 @@ const Card = ({ event, hasOrderLink = false, hidePrice = false }: CardProps) => 
           />
         </div>
       </Link>
-    
+  
       {isEventCreator && !hidePrice && (
         <div className="absolute right-2 top-2 flex flex-col gap-4 rounded-xl bg-white p-3 shadow-sm transition-all">
           <Link href={`/events/${event.id}/update`}>

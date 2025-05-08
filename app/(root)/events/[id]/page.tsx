@@ -6,6 +6,7 @@ import Collection from '@/components/shared/Collection';
 import { notFound } from 'next/navigation';
 import CheckoutButton from '@/components/shared/CheckoutButton';
 import { Timestamp } from 'firebase/firestore';
+import { ClientEvent } from '@/types/event';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ export default async function EventPage({ params, searchParams }: EventPageProps
   }
 
   try {
-    const event = await getEventById(eventId);
+    const event: ClientEvent | null = await getEventById(eventId);
     if (!event) {
       return notFound();
     }
@@ -61,9 +62,21 @@ export default async function EventPage({ params, searchParams }: EventPageProps
     });
 
     const getOrganizerName = () => {
-      return event.organizer
-        ? [event.organizer.firstName, event.organizer.lastName].filter(Boolean).join(' ') || event.organizerId || 'Unknown Organizer'
-        : event.organizerId || 'Unknown Organizer';
+      // If firstName and lastName are set and not default values, use them
+      if (
+        event.organizer?.firstName &&
+        event.organizer?.lastName &&
+        event.organizer.firstName !== 'Unknown' &&
+        event.organizer.lastName !== 'Organizer'
+      ) {
+        return `${event.organizer.firstName} ${event.organizer.lastName}`.trim();
+      }
+      // Otherwise, prefer displayName if available
+      if (event.organizer?.displayName) {
+        return event.organizer.displayName;
+      }
+      // Fallback to organizerId or default
+      return event.organizerId || 'Unknown Organizer';
     };
 
     const formatUrl = (url: string) => {

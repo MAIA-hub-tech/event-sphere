@@ -22,7 +22,7 @@ import { db } from '@/lib/firebase';
 import { deleteFileFromS3 } from '@/lib/aws/s3';
 import { FirestoreEvent, ClientEvent, Category, Organizer } from '@/types/event';
 import { revalidatePath } from 'next/cache';
-import { toDate } from '@/lib/utils'; // Added import
+import { toDate } from '@/lib/utils';
 
 // Constants
 const EVENTS_PER_PAGE = 6;
@@ -89,10 +89,36 @@ const fetchOrganizerDetails = async (organizerId: string): Promise<Organizer> =>
     }
 
     const data = organizerDoc.data();
+    let firstName = data.firstName || '';
+    let lastName = data.lastName || '';
+
+    // If firstName and lastName are not set or are default values, try to parse from displayName
+    if (
+      (!firstName || firstName === 'Unknown') &&
+      (!lastName || lastName === 'Organizer') &&
+      data.displayName
+    ) {
+      const nameParts = data.displayName.trim().split(/\s+/);
+      if (nameParts.length === 1) {
+        firstName = nameParts[0];
+        lastName = '';
+      } else {
+        firstName = nameParts[0];
+        lastName = nameParts.slice(1).join(' ');
+      }
+    }
+
+    // If still not set, fall back to defaults
+    if (!firstName && !lastName) {
+      firstName = 'Unknown';
+      lastName = 'Organizer';
+    }
+
     return {
       id: organizerDoc.id,
-      firstName: data.firstName || 'Unknown',
-      lastName: data.lastName || 'Organizer',
+      firstName,
+      lastName,
+      displayName: data.displayName || undefined,
       email: data.email || undefined,
       photoURL: data.photoURL || undefined,
     };
@@ -114,10 +140,36 @@ const fetchOrganizersBatch = async (organizerIds: string[]): Promise<Map<string,
     const organizersMap = new Map<string, Organizer>();
     snapshot.forEach(doc => {
       const data = doc.data();
+      let firstName = data.firstName || '';
+      let lastName = data.lastName || '';
+
+      // If firstName and lastName are not set or are default values, try to parse from displayName
+      if (
+        (!firstName || firstName === 'Unknown') &&
+        (!lastName || lastName === 'Organizer') &&
+        data.displayName
+      ) {
+        const nameParts = data.displayName.trim().split(/\s+/);
+        if (nameParts.length === 1) {
+          firstName = nameParts[0];
+          lastName = '';
+        } else {
+          firstName = nameParts[0];
+          lastName = nameParts.slice(1).join(' ');
+        }
+      }
+
+      // If still not set, fall back to defaults
+      if (!firstName && !lastName) {
+        firstName = 'Unknown';
+        lastName = 'Organizer';
+      }
+
       organizersMap.set(doc.id, {
         id: doc.id,
-        firstName: data.firstName || 'Unknown',
-        lastName: data.lastName || 'Organizer',
+        firstName,
+        lastName,
+        displayName: data.displayName || undefined,
         email: data.email || undefined,
         photoURL: data.photoURL || undefined,
       });
@@ -268,10 +320,10 @@ export const getEventById = async (eventId: string): Promise<ClientEvent | null>
     }
 
     const eventData = eventDoc.data();
-    const [organizer, category] = await Promise.all([
-      fetchOrganizerDetails(eventData.organizerId || eventData.userId),
-      fetchCategoryDetails(eventData.categoryId),
-    ]);
+    const organizer = await fetchOrganizerDetails(eventData.organizerId || eventData.userId);
+    console.log('Fetched organizer for event', eventId, ':', organizer);
+
+    const category = await fetchCategoryDetails(eventData.categoryId);
 
     return {
       ...transformFirestoreEvent(eventData, eventDoc.id),
@@ -361,6 +413,7 @@ export const getAllEvents = async ({
         id: organizerId,
         firstName: organizersMap.get(organizerId)?.firstName || 'Unknown',
         lastName: organizersMap.get(organizerId)?.lastName || 'Organizer',
+        displayName: organizersMap.get(organizerId)?.displayName || undefined,
         email: organizersMap.get(organizerId)?.email,
         photoURL: organizersMap.get(organizerId)?.photoURL,
       };
@@ -467,6 +520,7 @@ export const getEventsByUser = async ({
         id: organizerId,
         firstName: organizersMap.get(organizerId)?.firstName || 'Unknown',
         lastName: organizersMap.get(organizerId)?.lastName || 'Organizer',
+        displayName: organizersMap.get(organizerId)?.displayName || undefined,
         email: organizersMap.get(organizerId)?.email,
         photoURL: organizersMap.get(organizerId)?.photoURL,
       };
@@ -546,6 +600,7 @@ export const getRelatedEventsByCategory = async (payload: {
         id: organizerId,
         firstName: organizersMap.get(organizerId)?.firstName || 'Unknown',
         lastName: organizersMap.get(organizerId)?.lastName || 'Organizer',
+        displayName: organizersMap.get(organizerId)?.displayName || undefined,
         email: organizersMap.get(organizerId)?.email,
         photoURL: organizersMap.get(organizerId)?.photoURL,
       };
@@ -692,6 +747,7 @@ export const getEventsByOrganizer = async (organizerId: string, limit = 6): Prom
         id: organizerId,
         firstName: organizersMap.get(organizerId)?.firstName || 'Unknown',
         lastName: organizersMap.get(organizerId)?.lastName || 'Organizer',
+        displayName: organizersMap.get(organizerId)?.displayName || undefined,
         email: organizersMap.get(organizerId)?.email,
         photoURL: organizersMap.get(organizerId)?.photoURL,
       };
@@ -727,6 +783,7 @@ export const searchEvents = async (searchQuery: string, limit = 5): Promise<Clie
         id: organizerId,
         firstName: organizersMap.get(organizerId)?.firstName || 'Unknown',
         lastName: organizersMap.get(organizerId)?.lastName || 'Organizer',
+        displayName: organizersMap.get(organizerId)?.displayName || undefined,
         email: organizersMap.get(organizerId)?.email,
         photoURL: organizersMap.get(organizerId)?.photoURL,
       };
