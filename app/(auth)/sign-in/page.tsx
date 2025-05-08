@@ -11,9 +11,10 @@ import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { FirebaseError } from 'firebase/app'; // Import FirebaseError for better type safety
 
 export default function SignInPage() {
-  const { user, emailLogin, googleLogin } = useAuth();
+  const { user, loading: authLoading, emailLogin, googleLogin } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -27,8 +28,10 @@ export default function SignInPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user) router.push("/");
-  }, [user, router]);
+    if (!authLoading && user) {
+      router.push("/");
+    }
+  }, [user, authLoading, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -71,10 +74,11 @@ export default function SignInPage() {
     try {
       await emailLogin(formData.email.trim(), formData.password);
       toast.success("Welcome back!", { position: "top-center" });
-    } catch (error: any) {
+    } catch (error) {
+      const firebaseError = error as FirebaseError; // Cast error to FirebaseError for better type safety
       let errorMessage = "Sign in failed. Please try again.";
       
-      switch (error.code) {
+      switch (firebaseError.code) {
         case "auth/invalid-credential":
           errorMessage = "Invalid email or password";
           setErrors({
@@ -121,13 +125,14 @@ export default function SignInPage() {
       }, { merge: true });
       
       toast.success("Signed in with Google successfully!", { position: "top-center" });
-    } catch (error: any) {
-      console.error("Google sign in error:", error);
+    } catch (error) {
+      const firebaseError = error as FirebaseError; // Cast error to FirebaseError for better type safety
+      console.error("Google sign in error:", firebaseError);
       
       let errorMessage = "Google sign in failed. Please try again.";
-      if (error.code === "auth/popup-closed-by-user") {
+      if (firebaseError.code === "auth/popup-closed-by-user") {
         errorMessage = "Google sign in popup was closed";
-      } else if (error.code === "auth/account-exists-with-different-credential") {
+      } else if (firebaseError.code === "auth/account-exists-with-different-credential") {
         errorMessage = "An account already exists with this email";
       }
       
@@ -136,6 +141,14 @@ export default function SignInPage() {
       setGoogleLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 via-white to-blue-50">
+        <Loader2 className="h-10 w-10 animate-spin text-cyan-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 via-white to-blue-50 py-12 px-4 sm:px-6 lg:px-8">

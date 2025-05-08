@@ -1,12 +1,13 @@
 import {
   User,
+  UserCredential, // Add this import
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   GoogleAuthProvider,
   updateProfile,
-  sendPasswordResetEmail, // Add this import
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "../firebase";
 import { useEffect, useState } from "react";
@@ -16,10 +17,10 @@ interface AuthHook {
   user: User | null;
   loading: boolean;
   emailLogin: (email: string, password: string) => Promise<void>;
-  googleLogin: () => Promise<void>;
+  googleLogin: () => Promise<UserCredential>; // Update return type to UserCredential
   logout: () => Promise<void>;
   updateProfile: (data: { displayName?: string; photoURL?: string }) => Promise<void>;
-  sendPasswordReset: (email: string) => Promise<void>; // Add this to the interface
+  sendPasswordReset: (email: string) => Promise<void>;
 }
 
 export const useAuth = (): AuthHook => {
@@ -40,7 +41,7 @@ export const useAuth = (): AuthHook => {
 
   const googleLogin = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    return await signInWithPopup(auth, provider); // This returns a UserCredential
   };
 
   const logout = async () => {
@@ -63,6 +64,6 @@ export const useAuth = (): AuthHook => {
     googleLogin,
     logout,
     updateProfile: updateUserProfile,
-    sendPasswordReset, // Add this to the return object
+    sendPasswordReset,
   };
 };
